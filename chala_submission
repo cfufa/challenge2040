@@ -1,0 +1,59 @@
+import json
+import requests
+from datetime import datetime
+from datetime import timedelta 
+
+def dating (problem_json):
+        initial_date = problem_json['datestamp']
+        interval = problem_json['interval']
+        added_date = datetime.strptime(initial_date, '%Y-%m-%dT%H:%M:%SZ') + timedelta(seconds=interval)
+        return "\"" + added_date.isoformat() + "Z\""
+
+def prefix(problem_json):
+        str = problem_json['prefix']
+        array_strs = problem_json['array']
+        result = [no_prefix for no_prefix in array_strs if not no_prefix.startswith(str)]
+        return json.dumps(result)
+
+def haystack(problem_json):
+        needle = problem_json['needle']
+        strs = problem_json['haystack']
+        index = -1
+        for x in range(0,len(strs)):
+                if (needle == strs[x]):
+                        index = x
+                        return "\"" + str(index) + "\""
+        return "\"" + str(index) + "\""
+
+def main():
+        token = 'd5788596a8822c4c2b29f891c8cc32fb'
+        token_str = '{"token": "%s"}' %(token)
+        token_json = json.loads(token_str)
+        github_repo_url = 'https://github.com/cfufa/challenge2040'
+        api_url = 'http://challenge.code2040.org/api/'
+        problems = ["register","reverse","haystack","prefix","dating"]
+        key_soln = ["github", "string", "needle","array","datestamp"]
+        for i in range (0,len(problems)):
+                problem_url = api_url + problems[i]
+                if (i != 0): 
+                        problem_object = requests.post(problem_url, json = token_json)
+                        if (problem_object.status_code == requests.codes.ok):
+                                problem_str = problem_object.content
+                                if (i != 1): problem_json = json.loads(problem_str)
+                        else: return 
+                else: soln = "\""+github_repo_url+"\""
+                if (i == 1): soln = "\""+problem_str[::-1]+"\""  #reverse using string splicing 
+                elif (i == 2): soln = haystack(problem_json)
+                elif (i == 3): soln = prefix(problem_json) 
+                elif (i == 4): soln = dating(problem_json)
+                soln_msg_str = '{"token":"%s","%s": %s}' %(token, key_soln[i], soln)
+                soln_msg_json = json.loads(soln_msg_str)
+                soln_url = problem_url
+                if (i != 0): soln_url = soln_url + "/validate"
+                response = requests.post(soln_url, json = soln_msg_json)
+                if (response.status_code == requests.codes.ok):
+                        print response.content #if output does not say that step i is complete, revise
+                else: print response.status_code 
+
+if __name__ == "__main__":
+        main()
